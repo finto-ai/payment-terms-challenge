@@ -1,19 +1,19 @@
 # payment-terms-challenge
 
-Eine Node.js-Anwendung (TypeScript), die Zahlungsziele, Rechnungsdaten und Positionen aus PDF-Rechnungen extrahiert. Dafür wird der GPT-5 Responses-Endpunkt von OpenAI genutzt. Die Anwendung ist als CLI-Werkzeug implementiert und wird mit pnpm verwaltet.
+A Node.js application (TypeScript) that extracts payment terms, invoice data, and line items from markdown invoices. It uses OpenAI's GPT-5 responses endpoint. The application is implemented as a CLI tool and managed with pnpm.
 
 ## Features
 
-- Extrahiert Zahlungsziele, Rechnungs- und Kundendaten, Beträge und Positionen.
-- Liest Rechnungen lokal aus PDF-Dateien und übergibt den bereinigten Text an GPT-5.
-- Nutzt strukturierte Ausgaben mit JSON-Schema-Validierung über `zod`.
-- CLI mit optionalem Roh-JSON-Output und Vorschau des eingelesenen Rechnungstextes.
+- Extracts payment terms, invoice and customer data, amounts, and line items.
+- Reads invoices locally from markdown files and passes the content to GPT-5.
+- Uses structured outputs with JSON schema validation via `zod`.
+- CLI with optional raw JSON output and preview of invoice text.
 
-## Voraussetzungen
+## Prerequisites
 
-- Node.js 20 oder neuer
-- pnpm (die Projektdatei ist bereits dafür konfiguriert)
-- Ein gültiger OpenAI-API-Schlüssel mit Zugriff auf ein GPT-5-Modell
+- Node.js 20 or newer
+- pnpm (project file is already configured for it)
+- A valid OpenAI API key with access to a GPT-5 model
 
 ## Installation
 
@@ -21,9 +21,9 @@ Eine Node.js-Anwendung (TypeScript), die Zahlungsziele, Rechnungsdaten und Posit
 pnpm install
 ```
 
-## Konfiguration
+## Configuration
 
-Hinterlege deinen OpenAI-Schlüssel (und optional weitere Einstellungen) in einer `.env`-Datei oder direkt als Umgebungsvariablen:
+Store your OpenAI key (and optionally other settings) in a `.env` file or directly as environment variables:
 
 ```
 OPENAI_API_KEY=sk-...
@@ -33,53 +33,53 @@ OPENAI_TEMPERATURE=0
 OPENAI_MAX_OUTPUT_TOKENS=2000
 ```
 
-## Verwendung (CLI)
+## Usage (CLI)
 
 ```bash
-# Umgebungsvariablen setzen
+# Set environment variables
 export OPENAI_API_KEY=sk-...
 # optional: export OPENAI_MODEL=gpt-5.0
 
-# Entwicklungsversion mit ts-node
-pnpm run extract ./beispielrechnung.pdf
+# Development version with ts-node
+pnpm run extract ./data/invoice1.md
 
-# oder nach dem Build
+# or after build
 pnpm run build
-pnpm start ./beispielrechnung.pdf
+pnpm start ./data/invoice1.md
 
-# reine JSON-Ausgabe
-OPENAI_API_KEY=sk-... pnpm run extract ./rechnung.pdf --raw
+# raw JSON output
+OPENAI_API_KEY=sk-... pnpm run extract ./data/invoice1.md --raw
 ```
 
-### Wichtige Optionen
+### Important Options
 
-| Option | Beschreibung |
+| Option | Description |
 | --- | --- |
-| `-m, --model` | GPT-5-Modell überschreiben (Standard: `gpt-5.0`). |
-| `-t, --temperature` | Sampling-Temperatur zwischen 0 und 2. |
-| `-o, --max-output-tokens` | Maximale Anzahl der generierten Tokens. |
-| `--raw` | Nur die JSON-Ausgabe ohne weitere Informationen. |
-| `--preview` | Zeigt zusätzlich einen kurzen Auszug des PDF-Textes. |
-| `--pretty/--no-pretty` | JSON bei `--raw` eingerückt ausgeben (Standard: aktiviert). |
+| `-m, --model` | Override GPT-5 model (default: `gpt-5.0`). |
+| `-t, --temperature` | Sampling temperature between 0 and 2. |
+| `-o, --max-output-tokens` | Maximum number of generated tokens. |
+| `--raw` | Only JSON output without additional information. |
+| `--preview` | Additionally shows a short excerpt of the invoice text. |
+| `--pretty/--no-pretty` | Output indented JSON with `--raw` (default: enabled). |
 
-## Entwicklungsskripte
+## Development Scripts
 
 ```bash
-# TypeScript kompilieren
+# Compile TypeScript
 pnpm run build
 
-# Typprüfung ohne Ausgabe
+# Type checking without output
 pnpm run lint
 
-# CLI direkt über ts-node starten
-pnpm run dev ./rechnung.pdf
+# Start CLI directly via ts-node
+pnpm run dev ./data/invoice1.md
 ```
 
-## Funktionsweise
+## How it Works
 
-1. **PDF-Extraktion:** `pdf-parse` wandelt die Rechnung in reinen Text um.
-2. **Prompterstellung:** Ein spezialisierter Prompt weist GPT-5 an, Zahlungsziele, Beträge und Positionen zu extrahieren.
-3. **Strukturierte Ausgabe:** Die Antwort des Modells wird gegen ein `zod`-Schema validiert, sodass nur sauberes JSON zurückgegeben wird.
-4. **CLI-Ausgabe:** Je nach Option werden eine kompakte Zusammenfassung, eine Tabelle der Positionen sowie der vollständige JSON-Output angezeigt.
+1. **Markdown Reading:** Reads invoice content directly from markdown files.
+2. **Prompt Creation:** A specialized prompt instructs GPT-5 to extract payment terms, amounts, and line items.
+3. **Structured Output:** The model's response is validated against a `zod` schema, ensuring only clean JSON is returned.
+4. **CLI Output:** Depending on options, a compact summary, table of line items, and complete JSON output are displayed.
 
-> Hinweis: GPT-5 ist ein leistungsstarkes Sprachmodell. Achte auf sensible Inhalte in Rechnungen und speichere API-Schlüssel niemals im Quellcode.
+> Note: GPT-5 is a powerful language model. Be mindful of sensitive content in invoices and never store API keys in source code.

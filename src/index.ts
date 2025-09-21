@@ -4,7 +4,7 @@ import process from 'node:process';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-import { extractInvoiceDataFromPdf } from './extractor';
+import { extractInvoiceDataFromMarkdown } from './extractor';
 
 function formatAmount(amount?: number, currency?: string | null): string {
   if (amount === undefined) {

@@ -1,8 +1,9 @@
 import OpenAI from 'openai';
-import { zodTextFormat } from 'openai/helpers/zod';
+import type { ResponseFormatTextJSONSchemaConfig } from 'openai/resources/responses/responses.js';
+import { z } from 'zod';
 
 import { loadConfig } from './env';
-import { extractTextFromPdf } from './pdfLoader';
+import { extractTextFromMarkdown } from './markdownLoader';
 import { createInvoiceExtractionPrompt, SYSTEM_INSTRUCTION } from './prompt';
 import { InvoiceExtractionSchema, InvoiceExtraction } from './schema';
 
@@ -20,7 +21,7 @@ export interface InvoiceExtractionResult {
   rawText: string;
 }
 
-export async function extractInvoiceDataFromPdf(
+export async function extractInvoiceDataFromMarkdown(
   filePath: string,
   options: ExtractionOptions = {},
 ): Promise<InvoiceExtractionResult> {
@@ -36,25 +37,30 @@ export async function extractInvoiceDataFromPdf(
   }
 
   const { openAI } = loadConfig(overrides);
-  const { absolutePath, text } = await extractTextFromPdf(filePath);
-  const prompt = createInvoiceExtractionPrompt(text);
+  const { absolutePath, text } = await extractTextFromMarkdown(filePath);
 
   const client = new OpenAI({ apiKey: openAI.apiKey });
+
+  const jsonSchema: ResponseFormatTextJSONSchemaConfig = {
+    type: 'json_schema',
+    name: 'invoice_extraction',
+    schema: z.toJSONSchema(InvoiceExtractionSchema, { target: 'draft-7' }),
+    strict: true,
+  };
 
   try {
     const response = await client.responses.parse({
       model: openAI.model,
-      input: prompt,
-      instructions: SYSTEM_INSTRUCTION,
-      temperature: openAI.temperature,
-      ...(openAI.maxOutputTokens !== undefined ? { max_output_tokens: openAI.maxOutputTokens } : {}),
-      text: {
-        format: zodTextFormat(InvoiceExtractionSchema, 'InvoiceExtraction'),
-      },
+      reasoning: { effort: 'medium' },
+      text: { format: jsonSchema },
+      input: [
+        { role: 'system', content: SYSTEM_INSTRUCTION },
+        { role: 'user', content: createInvoiceExtractionPrompt(text) },
+      ],
     });
 
     if (!response.output_parsed) {
-      throw new Error('Keine strukturierten Daten im Modell-Output gefunden.');
+      throw new Error('No structured data found in model output.');
     }
 
     return {
@@ -66,6 +72,6 @@ export async function extractInvoiceDataFromPdf(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`GPT-5 konnte die Rechnung nicht verarbeiten: ${message}`);
+    throw new Error(`GPT-5 could not process the invoice: ${message}`);
   }
 }

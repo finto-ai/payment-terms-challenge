@@ -1,68 +1,18 @@
 #!/usr/bin/env node
 import process from 'node:process';
+import path from 'node:path';
+import fs from 'node:fs';
 
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
 import { extractInvoiceDataFromMarkdown } from './extractor';
 
-function formatAmount(amount?: number, currency?: string | null): string {
-  if (amount === undefined) {
-    return 'unbekannt';
-  }
-
-  const formatted = amount.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-  return currency ? `${formatted} ${currency}` : formatted;
-}
-
-function createSnippet(text: string, maxLength = 400): string {
-  const normalised = text.replace(/\s+/g, ' ').trim();
-  if (normalised.length <= maxLength) {
-    return normalised;
-  }
-
-  return `${normalised.slice(0, maxLength - 1).trim()}…`;
-}
-
 async function main(): Promise<void> {
   const parser = yargs(hideBin(process.argv))
     .scriptName('payment-terms-extractor')
-    .usage('$0 <pdf> [Optionen]')
-    .option('model', {
-      alias: 'm',
-      type: 'string',
-      describe: 'Name des GPT-5-Modells (Standard: gpt-5.0).',
-    })
-    .option('temperature', {
-      alias: 't',
-      type: 'number',
-      describe: 'Sampling-Temperatur zwischen 0 und 2.',
-    })
-    .option('max-output-tokens', {
-      alias: 'o',
-      type: 'number',
-      describe: 'Maximale Anzahl an Tokens für den Modell-Output.',
-    })
-    .option('raw', {
-      type: 'boolean',
-      default: false,
-      describe: 'Nur den JSON-Output ohne zusätzliche Informationen ausgeben.',
-    })
-    .option('preview', {
-      type: 'boolean',
-      default: false,
-      describe: 'Zusätzlich einen kurzen Textauszug der Rechnung anzeigen.',
-    })
-    .option('pretty', {
-      type: 'boolean',
-      default: true,
-      describe: 'JSON-Ausgabe einrücken (nur in Kombination mit --raw).',
-    })
-    .demandCommand(1, 'Bitte gib den Pfad zu einer PDF-Rechnung an.')
+    .usage('$0 <invoice-name>')
+    .demandCommand(1, 'Please provide an invoice name (e.g., invoice1)')
     .strict()
     .help();
 
@@ -70,33 +20,36 @@ async function main(): Promise<void> {
   const [firstArg] = argv._;
 
   if (typeof firstArg !== 'string') {
-    console.error('Bitte gib den Pfad zu einer PDF-Rechnung an.');
+    console.error('Please provide an invoice name (e.g., invoice1)');
     process.exit(1);
     return;
   }
 
-  const temperature =
-    typeof argv.temperature === 'number' && Number.isFinite(argv.temperature)
-      ? argv.temperature
-      : undefined;
-  const maxOutputTokens =
-    typeof argv.maxOutputTokens === 'number' && Number.isFinite(argv.maxOutputTokens)
-      ? Math.trunc(argv.maxOutputTokens)
-      : undefined;
+  // Allow simple invoice name like "invoice1" or full path
+  let filePath = firstArg;
+  if (!filePath.includes('/') && !filePath.endsWith('.md')) {
+    // Assume it's just the invoice name, add data/ prefix and .md suffix
+    filePath = path.join(process.cwd(), 'data', `${filePath}.md`);
+  } else if (!path.isAbsolute(filePath)) {
+    // Make relative paths absolute
+    filePath = path.join(process.cwd(), filePath);
+  }
+
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    console.error(`File not found: ${filePath}`);
+    console.error('Available invoices: invoice1, invoice2, invoice3, invoice4, invoice5, invoice6');
+    process.exit(1);
+    return;
+  }
+
+  process.stderr.write(`Reading invoice from: ${filePath}\n`);
+  process.stderr.write('Extracting data with GPT-5... ');
 
   try {
-    const extractionOptions: { model?: string; temperature?: number; maxOutputTokens?: number } = {};
-    if (typeof argv.model === 'string' && argv.model.trim().length > 0) {
-      extractionOptions.model = argv.model;
-    }
-    if (temperature !== undefined) {
-      extractionOptions.temperature = temperature;
-    }
-    if (maxOutputTokens !== undefined) {
-      extractionOptions.maxOutputTokens = Math.max(maxOutputTokens, 1);
-    }
+    const result = await extractInvoiceDataFromMarkdown(filePath);
 
-    const result = await extractInvoiceDataFromPdf(firstArg, extractionOptions);
+    process.stderr.write('Done!\n');
 
     const output = {
       meta: {
@@ -107,42 +60,20 @@ async function main(): Promise<void> {
       invoice: result.invoice,
     };
 
-    if (argv.raw) {
-      const spacing = argv.pretty === false ? undefined : 2;
-      process.stdout.write(`${JSON.stringify(output, null, spacing)}\n`);
-      return;
+    const jsonOutput = JSON.stringify(output, null, 2);
+
+    // Save to output folder
+    const outputDir = path.join(process.cwd(), 'output');
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    console.log('Quelle:          ', output.meta.sourceFile);
-    console.log('Modell:          ', output.meta.model);
-    console.log('Extrahiert am:   ', output.meta.extractedAt);
-    console.log('Rechnungsdatum:  ', output.invoice.invoiceDate ?? 'unbekannt');
-    console.log('Fälligkeitsdatum:', output.invoice.dueDate ?? 'unbekannt');
-    console.log('Zahlungsziel:    ', output.invoice.paymentTerms ?? 'unbekannt');
-    console.log('Gesamtbetrag:    ', formatAmount(output.invoice.totalAmount ?? undefined, output.invoice.currency));
+    const invoiceName = path.basename(firstArg, '.md');
+    const outputPath = path.join(outputDir, `${invoiceName}.json`);
+    fs.writeFileSync(outputPath, jsonOutput + '\n');
 
-    if (output.invoice.lineItems && output.invoice.lineItems.length > 0) {
-      console.log('\nPositionen:');
-      console.table(
-        output.invoice.lineItems.map((item, index) => ({
-          Pos: index + 1,
-          Beschreibung: item.description,
-          Menge: item.quantity ?? '',
-          Einzelpreis: item.unitPrice ?? '',
-          Gesamt: item.totalPrice ?? '',
-        })),
-      );
-    } else {
-      console.log('\nKeine Positionen erkannt.');
-    }
-
-    if (argv.preview) {
-      console.log('\nTextauszug:');
-      console.log(createSnippet(result.rawText));
-    }
-
-    console.log('\nJSON-Ausgabe:');
-    console.log(JSON.stringify(output, null, 2));
+    process.stderr.write(`Result saved to: ${outputPath}\n\n`);
+    process.stdout.write(jsonOutput + '\n');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Fehler: ${message}`);

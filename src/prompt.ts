@@ -1,23 +1,16 @@
-const FIELD_HELP = `Extrahiere aus der Rechnung folgende Daten:
-- "invoiceNumber": Die Rechnungsnummer.
-- "invoiceDate": Das Rechnungsdatum im ISO-Format (YYYY-MM-DD), falls verfügbar.
-- "dueDate": Das Zahlungsziel als Datum im ISO-Format, falls angegeben.
-- "paymentTerms": Das Zahlungsziel als Wortlaut (z. B. "Net 30 Tage" oder "Zahlbar sofort").
-- "lineItems": Liste aller Positionen mit Beschreibung, Menge, Einzelpreis und Positionsgesamt.
-- "totalAmount", "subtotal", "taxAmount", "amountDue": numerische Werte ohne Währungssymbole.
-- "currency": ISO-Währungscode (z. B. EUR, USD), falls vorhanden.
-- "supplier" und "customer": Firmenname, Adresse, Steuer- oder USt-ID sowie Kontaktinformationen.
-- "paymentDetails": Bank- oder Zahlungsangaben (IBAN, BIC, Verwendungszweck etc.).
-- "notes": Relevante Hinweise oder Fußnoten.
-- "language": Die erkannte Sprache der Rechnung.
-- "confidenceNotes": Unsicherheiten oder fehlende Informationen.`;
+const FIELD_HELP = `Extract the following data from the invoice:
+- "invoiceNumber": The invoice number.
+- "invoiceDate": The invoice date in ISO format (YYYY-MM-DD), if available.
+- "dueDate": The due date in ISO format, if specified.
+- "paymentTerms": The payment terms as text (e.g., "Net 30 days" or "Due upon receipt").
+- "totalAmount": Numeric value without currency symbols.
+- "currency": ISO currency code (e.g., EUR, USD), if available.`;
 
-export const SYSTEM_INSTRUCTION = `Du bist GPT-5, ein Spezialist für die Extraktion strukturierter Rechnungsdaten aus PDF-Texten.
-Halte dich strikt an das vorgegebene JSON-Schema. Verwende "null" bzw. lass Felder aus, wenn Informationen fehlen.
-Nutze ISO-Datumsformate (YYYY-MM-DD) und Dezimalzahlen mit Punkt als Dezimaltrennzeichen.
-Gib Zahlungsziele aussagekräftig wieder (z. B. "Net 30 days" oder "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum").
-Schreibe alle Freitextfelder in der Sprache des Originaldokuments.`;
+export const SYSTEM_INSTRUCTION = `You are a specialist in extracting structured invoice data from PDF texts.
+Strictly adhere to the provided JSON schema. Use "null" for missing information.
+Use ISO date formats (YYYY-MM-DD) and decimal numbers with a period as the decimal separator.
+Provide payment terms clearly (e.g., "Net 30 days" or "Due within 14 days of invoice date").`;
 
 export function createInvoiceExtractionPrompt(invoiceText: string): string {
-  return `${FIELD_HELP}\n\nRechnungstext zur Analyse:\n---\n${invoiceText}\n---`;
+  return `${FIELD_HELP}\n\nInvoice text for analysis:\n---\n${invoiceText}\n---`;
 }

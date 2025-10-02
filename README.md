@@ -18,25 +18,9 @@ The current implementation extracts only basic header information:
 
 ### Your Goal
 
-Extend the schema in `src/schema.ts` to extract:
+Extend the schema in `src/schema.ts` to extract payment terms.
 
-1. **Invoice Header** (already implemented, but feel free to add more fields):
-   - Invoice number
-   - Invoice date
-   - Due date
-   - Currency
-   - Total amount
-
-2. **Line Items** (needs to be added):
-   Each line item should include:
-   - `description` - Item description
-   - `quantity` - Quantity ordered
-   - `unitPrice` - Price per unit
-   - `lineTotal` - Total for this line
-   - `isDiscountEligible` - Whether this line is eligible for early payment discounts (important for surcharges!)
-   - Any other relevant fields you identify
-
-3. **Payment Terms** (needs to be structured):
+1. **Payment Terms** (needs to be structured):
    Most invoices have two payment options:
 
    **a) Net Payment Term:**
@@ -46,11 +30,11 @@ Extend the schema in `src/schema.ts` to extract:
    **b) Discount Payment Term(s):**
    - `discountPercentage` - Discount percentage (e.g., 2.5%)
    - `discountDays` - Days within which discount applies (e.g., 10)
-   - `discountDueDate` - Specific date for discount eligibility
    - `discountAmount` - Calculated discount amount in currency
-   - `discountBase` - Amount on which discount is calculated (may differ from total if surcharges excluded)
 
-   **Important:** Calculate the discount amounts **per line item** based on whether each item is discount-eligible. Some charges (surcharges, delivery, energy costs) should be marked as `isDiscountEligible: false`.
+   The days are relative to the invoice date. Be careful, sometimes not all items are eligible for discounts, we need to take care here.
+
+   Not everthing needs to be done with an llm call, you can also add some post processing after the llm call for example.
 
 ### Edge Cases to Handle
 
@@ -82,9 +66,6 @@ Your schema must include:
 **Invoice Header:**
 - Invoice number, date, due date, currency, total amount (already implemented)
 
-**Line Items Array:**
-- Each line item must have: description, quantity, unit price, line total
-- **Critical:** `isDiscountEligible` boolean flag (to identify surcharges/delivery/energy costs)
 
 **Structured Payment Terms:**
 - Must extract **both** payment options (net and discount)
@@ -92,18 +73,14 @@ Your schema must include:
 - **Discount terms:** Must include ALL of the following:
   - Discount percentage (e.g., 2.5%)
   - Discount days (e.g., 10)
-  - Discount due date (specific date for discount eligibility)
   - Discount amount (calculated in currency)
-  - Discount base amount (may differ from total when items are excluded)
 
 ### What We're Looking For
 
 - Clean, well-structured Zod schemas with appropriate nesting
 - Proper handling of nullable/optional fields
 - Clear field naming and types
-- Correct calculation of discount amounts based on line-item eligibility
 - Ability to handle edge cases where certain charges are excluded from discounts
-- Per-line-item discount eligibility tracking (`isDiscountEligible` field)
 - Structured payment terms (not just text) with ALL required fields (days, dates, amounts, percentages)
 - Code quality and TypeScript best practices
 

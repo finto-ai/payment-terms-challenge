@@ -34,30 +34,30 @@ Extend the schema in `src/schema.ts` to extract payment terms.
 
    The days are relative to the invoice date. Be careful, sometimes not all items are eligible for discounts, we need to take care here.
 
-   Not everthing needs to be done with an llm call, you can also add some post processing after the llm call for example.
+   Not everything needs to be done with an llm call, you can also add some post-processing after the llm call for example. LLMs are bad at math, so calculating differences between dates doesn't work well - you're better off with post-processing for calculations.
 
 ### Edge Cases to Handle
 
 The invoices include several real-world scenarios that your schema must handle:
 
 **invoice7**: Copper surcharges excluded from early payment discount
-- Copper surcharge line should have `isDiscountEligible: false`
+- Copper surcharge line should be marked as excluded from discounts
 - Discount calculation should only apply to eligible items
 - Total discount: 2.5% on €1,460.00 = €36.50 (not on full €1,647.50)
 
 **invoice8**: Multiple excluded charges (copper surcharge + freight & packaging)
-- Both copper surcharge and freight lines marked as non-eligible
+- Both copper surcharge and freight lines are excluded from discounts
 - 3% discount on €1,513.50 (not on €1,723.30)
 
 **invoice9**: Delivery charges excluded from discount calculation
-- Delivery line item should be `isDiscountEligible: false`
+- Delivery line item should be marked as excluded from discounts
 - 2% discount on goods value only
 
 **invoice10**: Energy surcharges and special delivery excluded
-- Energy surcharge and special delivery marked as non-eligible
+- Energy surcharge and special delivery are excluded from discounts
 - 2.5% discount within 10 days on materials only
 
-Your schema should clearly distinguish eligible vs. non-eligible line items and calculate discounts accordingly.
+Your schema should clearly distinguish which line items are eligible for discounts and which are not, and calculate discounts accordingly.
 
 ### Required Output Fields
 
@@ -133,6 +133,8 @@ cat output/invoice7.json
 - The prompt is in `src/prompt.ts` - you don't need to modify it
 - Focus on the schema design in `src/schema.ts`
 - Test frequently with different invoices to validate your schema
+- Use [Zod metadata](https://zod.dev/metadata?id=meta) to add descriptions that OpenAI will see
+- Consider [Zod discriminated unions](https://zod.dev/api#discriminated-unions) for complex nested structures
 
 ## Current Output Schema (Starter Code)
 

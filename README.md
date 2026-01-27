@@ -124,7 +124,7 @@ When you're done:
 2. Review the JSON output in the `output/` folder
 3. Ensure edge cases are handled correctly
 
-No need to modify the prompt engineering or OpenAI integration - focus on the schema design!
+The prompt is schema-driven - field descriptions from `.meta()` are automatically included in the JSON schema sent to the LLM. Focus on the schema design!
 
 ## Prerequisites
 
@@ -165,7 +165,7 @@ cat output/invoice7.json
 
 - The project uses `tsx` for fast TypeScript execution (no build needed during development)
 - Run `pnpm run lint` to check for TypeScript errors
-- The prompt is in `src/prompt.ts` - you don't need to modify it
+- The prompt is schema-driven via Zod `.meta()` descriptions - the LLM sees your field descriptions
 - Focus on the schema design in `src/schema.ts`
 - Test frequently with different invoices to validate your schema
 - Use [Zod metadata](https://zod.dev/metadata?id=meta) to add descriptions that OpenAI will see

@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   // Check if file exists
   if (!fs.existsSync(filePath)) {
     console.error(`File not found: ${filePath}`);
-    console.error('Available invoices: invoice1, invoice2, invoice3, invoice4, invoice5, invoice6');
+    console.error('Available invoices: invoice1 through invoice12');
     process.exit(1);
     return;
   }
@@ -76,7 +76,7 @@ async function main(): Promise<void> {
     process.stdout.write(jsonOutput + '\n');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`Fehler: ${message}`);
+    console.error(`Error: ${message}`);
     process.exit(1);
   }
 }

@@ -18,9 +18,18 @@ The current implementation extracts only basic header information:
 
 ### Your Goal
 
-Extend the schema in `src/schema.ts` to extract payment terms.
+Extend the schema in `src/schema.ts` to extract:
 
-1. **Payment Terms** (needs to be structured):
+1. **Line Items** (array of invoice positions):
+   - `description` - Item description
+   - `quantity` - Quantity as number
+   - `unitPrice` - Price per unit (nullable if not shown)
+   - `amount` - Total for this line
+   - `discountEligible` - Boolean: is this item eligible for early payment discount?
+
+   **Why line items matter:** Some items (copper surcharges, delivery fees, energy surcharges) are explicitly excluded from discount calculations. Your schema must track eligibility per line item so the discount can be calculated correctly on only the eligible amount.
+
+2. **Payment Terms** (needs to be structured):
    Most invoices have two payment options:
 
    **a) Net Payment Term:**
@@ -86,10 +95,32 @@ Your schema must include:
 
 **Note:** Part of this challenge is designing an appropriate schema structure. Think about how to best model payment terms with nested objects.
 
+### Bonus Task: Validation Layer
+
+Once your schema extracts the data, implement validation logic:
+
+1. **Discount Amount Validation**
+   - If `discountPercentage` and `discountableAmount` are both present, verify:
+     `discountAmount ≈ discountableAmount × (discountPercentage / 100)`
+   - Allow for rounding tolerance (±0.02)
+
+2. **Discountable Amount Validation**
+   - Sum of `amount` for all line items where `discountEligible: true` should equal the discountable base amount
+
+3. **Date Consistency**
+   - If `netDays` is provided, verify: `netDueDate = invoiceDate + netDays`
+   - If `discountDays` is provided, verify discount due date calculation
+
+4. **Sanity Checks**
+   - `discountAmount` should be much smaller than `totalAmount` (typically 1-5%)
+   - If extracted `discountAmount` > 10% of `totalAmount`, flag as suspicious
+
+**Why:** LLMs are unreliable at math. Post-processing validation catches errors and gives you confidence in the extraction quality.
+
 ### Submission
 
 When you're done:
-1. Test your solution with all invoices (`invoice1` through `invoice10`)
+1. Test your solution with all invoices (`invoice1` through `invoice12`)
 2. Review the JSON output in the `output/` folder
 3. Ensure edge cases are handled correctly
 
@@ -111,6 +142,10 @@ Basic invoices with straightforward payment terms.
 - `invoice8` - Multiple excluded charges (copper surcharge + freight & packaging)
 - `invoice9` - Delivery charges excluded from discount calculation
 - `invoice10` - Energy surcharges and special delivery costs excluded from discount
+
+**Advanced edge cases:**
+- `invoice11` - "Confused Skonto": The payment terms show `3,00% Skt= 146,66` where 146,66 is the payment amount AFTER discount, NOT the discount itself. The actual discount is €4.54 (3% of €151.20).
+- `invoice12` - "Sofort Payment": Payment term is `Zahlungsziel:sofort` (due immediately). Must be extracted as 0 days, not null.
 
 ### Example Usage
 
@@ -156,6 +191,43 @@ The current implementation in `src/schema.ts` is intentionally minimal:
 **Your task:** Extend this schema to match the requirements above.
 
 Results are saved to `output/<invoice-name>.json` and printed to stdout.
+
+---
+
+## Design Questions
+
+We'll discuss these during the review. No code required, but please come prepared with your thoughts.
+
+### 1. Schema Migration
+
+Assume your v1 schema has been in production for 6 months, with 50,000 invoices extracted and stored in a PostgreSQL database. Now you need to ship v2 with breaking changes (e.g., `paymentTerms: string` → structured `paymentTerms` object).
+
+**Questions to consider:**
+- How would you handle existing data?
+- What's your rollout strategy?
+- How do you handle downstream consumers?
+
+### 2. Human-in-the-Loop Review
+
+Not all extractions will be perfect. Design a human-in-the-loop system.
+
+**Questions to consider:**
+- **Trigger Criteria:** When should an invoice go to human review?
+- **UX Design:** How would the review interface work?
+- **Feedback Loop:** How do corrections improve the system?
+
+### 3. Production Readiness
+
+You've built a working extraction service. What's needed to run it in production?
+
+**Consider (pick 2-3 to discuss):**
+- **Reliability:** How do you handle OpenAI API failures/timeouts?
+- **Cost:** GPT-5 isn't cheap. How do you optimize?
+- **Security:** Invoice data is sensitive. How do you handle PII?
+- **Scale:** 1000 invoices/day - what changes?
+- **Quality:** How do you ensure extraction quality remains consistently high over time?
+
+---
 
 ## Getting Started
 
